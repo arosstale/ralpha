@@ -19,13 +19,13 @@ export function Header() {
         <nav className="flex items-center gap-4 text-sm">
           <Link
             href="#engines"
-            className="text-neutral-500 hover:text-neutral-800 underline"
+            className="hidden sm:inline text-neutral-500 hover:text-neutral-800 underline"
           >
             engines
           </Link>
           <Link
             href="#usage"
-            className="text-neutral-500 hover:text-neutral-800 underline"
+            className="hidden sm:inline text-neutral-500 hover:text-neutral-800 underline"
           >
             usage
           </Link>
