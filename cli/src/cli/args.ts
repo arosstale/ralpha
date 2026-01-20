@@ -46,6 +46,9 @@ export function createProgram(): Command {
 		.option("--no-commit", "Don't auto-commit changes")
 		.option("--browser", "Enable browser automation (agent-browser)")
 		.option("--no-browser", "Disable browser automation")
+		.option("--model <name>", "Override default model for the engine")
+		.option("--sonnet", "Shortcut for --claude --model sonnet")
+		.option("--no-merge", "Skip automatic branch merging after parallel execution")
 		.option("-v, --verbose", "Verbose output");
 
 	return program;
@@ -67,13 +70,17 @@ export function parseArgs(args: string[]): {
 	const opts = program.opts();
 	const [task] = program.args;
 
-	// Determine AI engine
+	// Determine AI engine (--sonnet implies --claude)
 	let aiEngine = "claude";
-	if (opts.opencode) aiEngine = "opencode";
+	if (opts.sonnet) aiEngine = "claude";
+	else if (opts.opencode) aiEngine = "opencode";
 	else if (opts.cursor) aiEngine = "cursor";
 	else if (opts.codex) aiEngine = "codex";
 	else if (opts.qwen) aiEngine = "qwen";
 	else if (opts.droid) aiEngine = "droid";
+
+	// Determine model override (--sonnet is shortcut for --model sonnet)
+	const modelOverride = opts.sonnet ? "sonnet" : opts.model || undefined;
 
 	// Determine PRD source with auto-detection for file vs folder
 	let prdSource: "markdown" | "markdown-folder" | "yaml" | "github" = "markdown";
@@ -122,6 +129,8 @@ export function parseArgs(args: string[]): {
 		githubLabel: opts.githubLabel || "",
 		autoCommit: opts.commit !== false,
 		browserEnabled: opts.browser === true ? "true" : opts.browser === false ? "false" : "auto",
+		modelOverride,
+		skipMerge: opts.merge === false,
 	};
 
 	return {

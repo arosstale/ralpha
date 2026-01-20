@@ -1,4 +1,4 @@
-import type { AIEngine, AIResult, ProgressCallback } from "./types.ts";
+import type { AIEngine, AIResult, EngineOptions, ProgressCallback } from "./types.ts";
 
 /**
  * Check if a command is available in PATH
@@ -246,7 +246,7 @@ export abstract class BaseAIEngine implements AIEngine {
 		return commandExists(this.cliCommand);
 	}
 
-	abstract execute(prompt: string, workDir: string): Promise<AIResult>;
+	abstract execute(prompt: string, workDir: string, options?: EngineOptions): Promise<AIResult>;
 
 	/**
 	 * Execute with streaming progress updates (optional implementation)
@@ -255,5 +255,6 @@ export abstract class BaseAIEngine implements AIEngine {
 		prompt: string,
 		workDir: string,
 		onProgress: ProgressCallback,
+		options?: EngineOptions,
 	): Promise<AIResult>;
 }

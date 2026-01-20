@@ -4,7 +4,7 @@ import { createEngine, isEngineAvailable } from "../../engines/index.ts";
 import type { AIEngineName } from "../../engines/types.ts";
 import { isBrowserAvailable } from "../../execution/browser.ts";
 import { runParallel } from "../../execution/parallel.ts";
-import { runSequential } from "../../execution/sequential.ts";
+import { type ExecutionResult, runSequential } from "../../execution/sequential.ts";
 import { getDefaultBaseBranch } from "../../git/branch.ts";
 import { createTaskSource } from "../../tasks/index.ts";
 import {
@@ -94,7 +94,7 @@ export async function runLoop(options: RuntimeOptions): Promise<void> {
 	const activeSettings = buildActiveSettings(options);
 
 	// Run tasks
-	let result;
+	let result: ExecutionResult;
 	if (options.parallel) {
 		result = await runParallel({
 			engine,

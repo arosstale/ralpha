@@ -5,7 +5,7 @@ import {
 	execCommand,
 	execCommandStreaming,
 } from "./base.ts";
-import type { AIResult, ProgressCallback } from "./types.ts";
+import type { AIResult, EngineOptions, ProgressCallback } from "./types.ts";
 
 /**
  * Factory Droid AI Engine
@@ -14,12 +14,14 @@ export class DroidEngine extends BaseAIEngine {
 	name = "Factory Droid";
 	cliCommand = "droid";
 
-	async execute(prompt: string, workDir: string): Promise<AIResult> {
-		const { stdout, stderr, exitCode } = await execCommand(
-			this.cliCommand,
-			["exec", "--output-format", "stream-json", "--auto", "medium", prompt],
-			workDir,
-		);
+	async execute(prompt: string, workDir: string, options?: EngineOptions): Promise<AIResult> {
+		const args = ["exec", "--output-format", "stream-json", "--auto", "medium"];
+		if (options?.modelOverride) {
+			args.push("--model", options.modelOverride);
+		}
+		args.push(prompt);
+
+		const { stdout, stderr, exitCode } = await execCommand(this.cliCommand, args, workDir);
 
 		const output = stdout + stderr;
 
@@ -75,23 +77,25 @@ export class DroidEngine extends BaseAIEngine {
 		prompt: string,
 		workDir: string,
 		onProgress: ProgressCallback,
+		options?: EngineOptions,
 	): Promise<AIResult> {
+		const args = ["exec", "--output-format", "stream-json", "--auto", "medium"];
+		if (options?.modelOverride) {
+			args.push("--model", options.modelOverride);
+		}
+		args.push(prompt);
+
 		const outputLines: string[] = [];
 
-		const { exitCode } = await execCommandStreaming(
-			this.cliCommand,
-			["exec", "--output-format", "stream-json", "--auto", "medium", prompt],
-			workDir,
-			(line) => {
-				outputLines.push(line);
+		const { exitCode } = await execCommandStreaming(this.cliCommand, args, workDir, (line) => {
+			outputLines.push(line);
 
-				// Detect and report step changes
-				const step = detectStepFromOutput(line);
-				if (step) {
-					onProgress(step);
-				}
-			},
-		);
+			// Detect and report step changes
+			const step = detectStepFromOutput(line);
+			if (step) {
+				onProgress(step);
+			}
+		});
 
 		const output = outputLines.join("\n");
 

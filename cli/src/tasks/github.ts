@@ -54,7 +54,7 @@ export class GitHubTaskSource implements TaskSource {
 		// Extract issue number from "number:title" format
 		const issueNumber = Number.parseInt(id.split(":")[0], 10);
 
-		if (isNaN(issueNumber)) {
+		if (Number.isNaN(issueNumber)) {
 			throw new Error(`Invalid issue ID: ${id}`);
 		}
 
@@ -96,7 +96,7 @@ export class GitHubTaskSource implements TaskSource {
 	async getIssueBody(id: string): Promise<string> {
 		const issueNumber = Number.parseInt(id.split(":")[0], 10);
 
-		if (isNaN(issueNumber)) {
+		if (Number.isNaN(issueNumber)) {
 			return "";
 		}
 
