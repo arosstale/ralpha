@@ -17,6 +17,7 @@ import { ProgressSpinner } from "../../ui/spinner.ts";
  */
 export async function runTask(task: string, options: RuntimeOptions): Promise<void> {
 	const workDir = process.cwd();
+	const config = loadConfig(workDir);
 
 	// Set verbose mode
 	setVerbose(options.verbose);
@@ -94,7 +95,7 @@ export async function runTask(task: string, options: RuntimeOptions): Promise<vo
 			spinner.success(`Done ${tokens}`);
 
 			logTaskProgress(task, "completed", workDir);
-			await sendNotifications(loadConfig(workDir), "completed", {
+			await sendNotifications(config, "completed", {
 				tasksCompleted: 1,
 				tasksFailed: 0,
 			});
@@ -111,7 +112,7 @@ export async function runTask(task: string, options: RuntimeOptions): Promise<vo
 		} else {
 			spinner.error(result.error || "Unknown error");
 			logTaskProgress(task, "failed", workDir);
-			await sendNotifications(loadConfig(workDir), "failed", {
+			await sendNotifications(config, "failed", {
 				tasksCompleted: 0,
 				tasksFailed: 1,
 			});
@@ -122,7 +123,7 @@ export async function runTask(task: string, options: RuntimeOptions): Promise<vo
 		const errorMsg = error instanceof Error ? error.message : String(error);
 		spinner.error(errorMsg);
 		logTaskProgress(task, "failed", workDir);
-		await sendNotifications(loadConfig(workDir), "failed", {
+		await sendNotifications(config, "failed", {
 			tasksCompleted: 0,
 			tasksFailed: 1,
 		});

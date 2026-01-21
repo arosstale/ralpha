@@ -26,6 +26,7 @@ import { buildActiveSettings } from "../../ui/settings.ts";
 export async function runLoop(options: RuntimeOptions): Promise<void> {
 	const workDir = process.cwd();
 	const startTime = Date.now();
+	const config = loadConfig(workDir);
 
 	// Set verbose mode
 	setVerbose(options.verbose);
@@ -156,7 +157,7 @@ export async function runLoop(options: RuntimeOptions): Promise<void> {
 
 	// Send webhook notifications
 	const status = result.tasksFailed > 0 ? "failed" : "completed";
-	await sendNotifications(loadConfig(workDir), status, {
+	await sendNotifications(config, status, {
 		tasksCompleted: result.tasksCompleted,
 		tasksFailed: result.tasksFailed,
 	});
