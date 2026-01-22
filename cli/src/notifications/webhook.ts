@@ -137,7 +137,7 @@ export async function sendNotifications(
 		);
 	}
 
-	if (custom_webhook) {
+	if (custom_webhook && custom_webhook.trim() !== "") {
 		tasks.push(
 			sendCustomNotification(custom_webhook, status, result).catch((err) => {
 				logError(`Custom webhook notification failed: ${err.message}`);
