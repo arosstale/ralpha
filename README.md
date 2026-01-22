@@ -2,6 +2,8 @@
 
 [![npm version](https://img.shields.io/npm/v/ralphy-cli.svg)](https://www.npmjs.com/package/ralphy-cli)
 
+**[Join our Discord](https://discord.gg/SZZV74mCuV)** - Questions? Want to contribute? Join the community!
+
 ![Ralphy](assets/ralphy.jpeg)
 
 Autonomous AI coding loop. Runs AI agents on tasks until done.
