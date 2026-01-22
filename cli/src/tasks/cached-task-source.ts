@@ -28,12 +28,20 @@ export class CachedTaskSource implements TaskSource {
 	private flushIntervalMs: number;
 	private isShuttingDown = false;
 
+	/** Static registry of all instances for coordinated shutdown */
+	private static instances: Set<CachedTaskSource> = new Set();
+	/** Static flag to prevent duplicate exit handler registration */
+	private static exitHandlersRegistered = false;
+
 	constructor(inner: TaskSource, options?: CachedTaskSourceOptions) {
 		this.inner = inner;
 		this.flushIntervalMs = options?.flushIntervalMs ?? 1000;
 
-		// Register exit handlers to flush pending writes
-		this.registerExitHandlers();
+		// Track this instance for coordinated shutdown
+		CachedTaskSource.instances.add(this);
+
+		// Register exit handlers once globally (not per-instance)
+		CachedTaskSource.registerExitHandlers();
 	}
 
 	get type(): TaskSourceType {
@@ -160,24 +168,43 @@ export class CachedTaskSource implements TaskSource {
 		}, this.flushIntervalMs);
 	}
 
-	private registerExitHandlers(): void {
-		// Handle normal exit
-		const exitHandler = () => {
-			if (this.isShuttingDown) return;
-			this.isShuttingDown = true;
+	/**
+	 * Flush this instance synchronously during shutdown.
+	 * Called by the static exit handler.
+	 */
+	private flushSync(): void {
+		if (this.isShuttingDown) return;
+		this.isShuttingDown = true;
 
-			if (this.pendingCompletions.size > 0) {
-				// Synchronous flush attempt - write each completion immediately
-				// This is a best-effort since we can't await in exit handlers
-				for (const id of this.pendingCompletions) {
-					try {
-						// Call markComplete but don't await - it's sync I/O internally
-						// for markdown/yaml sources
-						this.inner.markComplete(id);
-					} catch {
-						// Best effort - ignore errors during shutdown
-					}
+		if (this.pendingCompletions.size > 0) {
+			// Synchronous flush attempt - write each completion immediately
+			// This is a best-effort since we can't await in exit handlers.
+			// Note: markComplete() returns a Promise but markdown/yaml sources
+			// use synchronous writeFileSync internally, so this works.
+			for (const id of this.pendingCompletions) {
+				try {
+					this.inner.markComplete(id);
+				} catch {
+					// Best effort - ignore errors during shutdown
 				}
+			}
+		}
+	}
+
+	/**
+	 * Register global exit handlers once to flush all instances.
+	 * Uses a static flag to prevent duplicate registration.
+	 */
+	private static registerExitHandlers(): void {
+		if (CachedTaskSource.exitHandlersRegistered) {
+			return;
+		}
+		CachedTaskSource.exitHandlersRegistered = true;
+
+		const exitHandler = () => {
+			// Flush all tracked instances
+			for (const instance of CachedTaskSource.instances) {
+				instance.flushSync();
 			}
 		};
 

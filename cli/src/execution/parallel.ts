@@ -200,9 +200,8 @@ export async function runParallel(
 					: await (taskSource as YamlTaskSource).getParallelGroup(nextTask.title);
 
 			if (group > 0) {
-				tasks = taskSource.getTasksInGroup
-					? await taskSource.getTasksInGroup(group)
-					: [nextTask];
+				// Both YamlTaskSource and CachedTaskSource implement getTasksInGroup
+				tasks = await taskSource.getTasksInGroup!(group);
 			} else {
 				tasks = [nextTask];
 			}
