@@ -293,6 +293,7 @@ export async function runParallel(
 			engine,
 			workDir,
 			modelOverride,
+			engineArgs,
 		);
 
 		// Restore starting branch if we're not already on it
@@ -315,6 +316,7 @@ async function mergeCompletedBranches(
 	engine: AIEngine,
 	workDir: string,
 	modelOverride?: string,
+	engineArgs?: string[],
 ): Promise<void> {
 	if (branches.length === 0) {
 		return;
