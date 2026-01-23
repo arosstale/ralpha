@@ -117,16 +117,16 @@ export class CopilotEngine extends BaseAIEngine {
 			};
 		}
 
-		// Parse Copilot output - extract response from output
-		const response = this.parseOutput(output);
+		// Parse Copilot output - extract response and token counts
+		const { response, inputTokens, outputTokens } = this.parseOutput(output);
 
 		// If command failed with non-zero exit code, provide a meaningful error
 		if (exitCode !== 0) {
 			return {
 				success: false,
 				response,
-				inputTokens: 0,
-				outputTokens: 0,
+				inputTokens,
+				outputTokens,
 				error: formatCommandError(exitCode, output),
 			};
 		}
@@ -134,8 +134,8 @@ export class CopilotEngine extends BaseAIEngine {
 		return {
 			success: true,
 			response,
-			inputTokens: 0, // Copilot CLI doesn't expose token counts in programmatic mode
-			outputTokens: 0,
+			inputTokens,
+			outputTokens,
 			cost: durationMs > 0 ? `duration:${durationMs}` : undefined,
 		};
 	}
@@ -176,14 +176,50 @@ export class CopilotEngine extends BaseAIEngine {
 		return null;
 	}
 
-	private parseOutput(output: string): string {
+	/**
+	 * Parse a token count string like "17.5k" or "73" into a number
+	 */
+	private parseTokenCount(str: string): number {
+		const trimmed = str.trim().toLowerCase();
+		if (trimmed.endsWith("k")) {
+			return Math.round(Number.parseFloat(trimmed.slice(0, -1)) * 1000);
+		}
+		if (trimmed.endsWith("m")) {
+			return Math.round(Number.parseFloat(trimmed.slice(0, -1)) * 1000000);
+		}
+		return Math.round(Number.parseFloat(trimmed)) || 0;
+	}
+
+	/**
+	 * Extract token counts from Copilot CLI output
+	 * Format: "model-name       17.5k in, 73 out, 11.8k cached (Est. 1 Premium request)"
+	 */
+	private parseTokenCounts(output: string): { inputTokens: number; outputTokens: number } {
+		// Look for the token count line in the "Breakdown by AI model" section
+		// Pattern: number followed by "in," and number followed by "out,"
+		const tokenMatch = output.match(/(\d+(?:\.\d+)?[km]?)\s+in,\s+(\d+(?:\.\d+)?[km]?)\s+out/i);
+		
+		if (tokenMatch) {
+			const inputTokens = this.parseTokenCount(tokenMatch[1]);
+			const outputTokens = this.parseTokenCount(tokenMatch[2]);
+			logDebug(`[Copilot] Parsed tokens: ${inputTokens} in, ${outputTokens} out`);
+			return { inputTokens, outputTokens };
+		}
+
+		return { inputTokens: 0, outputTokens: 0 };
+	}
+
+	private parseOutput(output: string): { response: string; inputTokens: number; outputTokens: number } {
+		// Extract token counts first
+		const { inputTokens, outputTokens } = this.parseTokenCounts(output);
+
 		// Copilot CLI may output text responses
 		// Extract the meaningful response, filtering out control characters and prompts
 		// Note: These filter patterns are specific to current Copilot CLI behavior
 		// and may need updates if the CLI output format changes
 		const lines = output.split("\n").filter(Boolean);
 
-		// Filter out empty lines and common CLI artifacts
+		// Filter out empty lines, CLI artifacts, and stats section
 		const meaningfulLines = lines.filter((line) => {
 			const trimmed = line.trim();
 			return (
@@ -191,10 +227,17 @@ export class CopilotEngine extends BaseAIEngine {
 				!trimmed.startsWith("?") && // Interactive prompts
 				!trimmed.startsWith("❯") && // Command prompts
 				!trimmed.includes("Thinking...") && // Status messages
-				!trimmed.includes("Working on it...") // Status messages
+				!trimmed.includes("Working on it...") && // Status messages
+				!trimmed.startsWith("Total usage") && // Stats section
+				!trimmed.startsWith("API time") && // Stats section
+				!trimmed.startsWith("Total session") && // Stats section
+				!trimmed.startsWith("Total code") && // Stats section
+				!trimmed.startsWith("Breakdown by") && // Stats section header
+				!trimmed.match(/^\s*\S+\s+\d+(?:\.\d+)?[km]?\s+in,/) // Token count lines
 			);
 		});
 
-		return meaningfulLines.join("\n") || "Task completed";
+		const response = meaningfulLines.join("\n").trim() || "Task completed";
+		return { response, inputTokens, outputTokens };
 	}
 }
