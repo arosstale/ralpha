@@ -25,29 +25,26 @@ export class CopilotEngine extends BaseAIEngine {
 	private sanitizePrompt(prompt: string): string {
 		// Replace all newlines with spaces, collapse multiple spaces
 		let sanitized = prompt.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
-		
+
 		if (isWindows) {
 			// Escape characters that are special in cmd.exe
 			// Order matters - escape carets first since they're the escape char
 			sanitized = sanitized
-				.replace(/\^/g, "^^")  // Escape carets first
-				.replace(/&/g, "^&")   // Escape ampersands
-				.replace(/</g, "^<")   // Escape less-than
-				.replace(/>/g, "^>")   // Escape greater-than
-				.replace(/\|/g, "^|")  // Escape pipes
-				.replace(/"/g, '""');  // Escape double quotes by doubling
+				.replace(/\^/g, "^^") // Escape carets first
+				.replace(/&/g, "^&") // Escape ampersands
+				.replace(/</g, "^<") // Escape less-than
+				.replace(/>/g, "^>") // Escape greater-than
+				.replace(/\|/g, "^|") // Escape pipes
+				.replace(/"/g, '""'); // Escape double quotes by doubling
 		}
-		
+
 		return sanitized;
 	}
 
 	/**
 	 * Build command arguments for Copilot CLI
 	 */
-	private buildArgs(
-		prompt: string,
-		options?: EngineOptions,
-	): { args: string[] } {
+	private buildArgs(prompt: string, options?: EngineOptions): { args: string[] } {
 		const args: string[] = [];
 
 		// Use --yolo for non-interactive mode (allows all tools and paths)
@@ -74,11 +71,7 @@ export class CopilotEngine extends BaseAIEngine {
 		const { args } = this.buildArgs(prompt, options);
 
 		const startTime = Date.now();
-		const { stdout, stderr, exitCode } = await execCommand(
-			this.cliCommand,
-			args,
-			workDir,
-		);
+		const { stdout, stderr, exitCode } = await execCommand(this.cliCommand, args, workDir);
 		const durationMs = Date.now() - startTime;
 
 		const output = stdout + stderr;
@@ -199,20 +192,15 @@ export class CopilotEngine extends BaseAIEngine {
 		const outputLines: string[] = [];
 		const startTime = Date.now();
 
-		const { exitCode } = await execCommandStreaming(
-			this.cliCommand,
-			args,
-			workDir,
-			(line) => {
-				outputLines.push(line);
+		const { exitCode } = await execCommandStreaming(this.cliCommand, args, workDir, (line) => {
+			outputLines.push(line);
 
-				// Detect and report step changes
-				const step = detectStepFromOutput(line);
-				if (step) {
-					onProgress(step);
-				}
-			},
-		);
+			// Detect and report step changes
+			const step = detectStepFromOutput(line);
+			if (step) {
+				onProgress(step);
+			}
+		});
 
 		const durationMs = Date.now() - startTime;
 		const output = outputLines.join("\n");
