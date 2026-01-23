@@ -180,14 +180,19 @@ export class CopilotEngine extends BaseAIEngine {
 	 * Parse a token count string like "17.5k" or "73" into a number
 	 */
 	private parseTokenCount(str: string): number {
+	private parseTokenCount(str: string): number {
 		const trimmed = str.trim().toLowerCase();
 		if (trimmed.endsWith("k")) {
-			return Math.round(Number.parseFloat(trimmed.slice(0, -1)) * 1000);
+			const value = Number.parseFloat(trimmed.slice(0, -1));
+			return isNaN(value) ? 0 : Math.round(value * 1000);
 		}
 		if (trimmed.endsWith("m")) {
-			return Math.round(Number.parseFloat(trimmed.slice(0, -1)) * 1000000);
+			const value = Number.parseFloat(trimmed.slice(0, -1));
+			return isNaN(value) ? 0 : Math.round(value * 1000000);
 		}
-		return Math.round(Number.parseFloat(trimmed)) || 0;
+		const value = Number.parseFloat(trimmed);
+		return isNaN(value) ? 0 : Math.round(value);
+	}
 	}
 
 	/**
