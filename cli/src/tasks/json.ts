@@ -23,8 +23,14 @@ export class JsonTaskSource implements TaskSource {
 	}
 
 	private readFile(): JsonTaskFile {
-		const content = readFileSync(this.filePath, "utf-8");
-		return JSON.parse(content) as JsonTaskFile;
+		try {
+			const content = readFileSync(this.filePath, "utf-8");
+			return JSON.parse(content) as JsonTaskFile;
+		} catch (error) {
+			throw new Error(
+				`Failed to read JSON task file: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	private writeFile(data: JsonTaskFile): void {
