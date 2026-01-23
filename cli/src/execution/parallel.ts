@@ -292,6 +292,9 @@ export async function runParallel(
 	// Global agent counter to ensure unique numbering across batches
 	let globalAgentNum = 0;
 
+	// Track processed tasks in dry-run mode (since we don't modify the source file)
+	const dryRunProcessedIds = new Set<string>();
+
 	// Process tasks in batches
 	let iteration = 0;
 
@@ -312,7 +315,14 @@ export async function runParallel(
 			(taskSource instanceof CachedTaskSource && taskSource.isYamlSource());
 
 		if (isYamlSource) {
-			const nextTask = await taskSource.getNextTask();
+			// In dry-run mode, find the first task not already processed
+			let nextTask = await taskSource.getNextTask();
+			while (nextTask && dryRun && dryRunProcessedIds.has(nextTask.id)) {
+				// Skip to find an unprocessed task - mark this one and get next
+				dryRunProcessedIds.add(nextTask.id);
+				const allTasks = await taskSource.getAllTasks();
+				nextTask = allTasks.find((t) => !dryRunProcessedIds.has(t.id)) || null;
+			}
 			if (!nextTask) break;
 
 			// Get parallel group - works for both direct and cached sources
@@ -320,12 +330,20 @@ export async function runParallel(
 
 			if (group > 0) {
 				tasks = await taskSource.getTasksInGroup(group);
+				// Filter out already processed tasks in dry-run mode
+				if (dryRun) {
+					tasks = tasks.filter((t) => !dryRunProcessedIds.has(t.id));
+				}
 			} else {
 				tasks = [nextTask];
 			}
 		} else {
 			// For other sources, get all remaining tasks
 			tasks = await taskSource.getAllTasks();
+			// Filter out already processed tasks in dry-run mode
+			if (dryRun) {
+				tasks = tasks.filter((t) => !dryRunProcessedIds.has(t.id));
+			}
 		}
 
 		if (tasks.length === 0) {
@@ -341,6 +359,10 @@ export async function runParallel(
 
 		if (dryRun) {
 			logInfo("(dry run) Skipping batch");
+			// Track processed tasks to avoid infinite loop
+			for (const task of batch) {
+				dryRunProcessedIds.add(task.id);
+			}
 			continue;
 		}
 
