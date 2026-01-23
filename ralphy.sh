@@ -50,6 +50,7 @@ PRD_SOURCE="markdown"  # markdown, yaml, github
 PRD_FILE="PRD.md"
 GITHUB_REPO=""
 GITHUB_LABEL=""
+SYNC_ISSUE=""  # GitHub issue number to sync PRD with
 
 # Browser automation (agent-browser)
 BROWSER_ENABLED="auto"  # auto, true, false
@@ -732,6 +733,7 @@ ${BOLD}PRD SOURCE OPTIONS:${RESET}
   --yaml FILE         Use YAML task file instead of markdown
   --github REPO       Fetch tasks from GitHub issues (e.g., owner/repo)
   --github-label TAG  Filter GitHub issues by label
+  --sync-issue NUM    Sync PRD file to GitHub issue body on each iteration
 
 ${BOLD}CAPABILITIES:${RESET}
   --browser           Enable browser automation (requires agent-browser)
@@ -891,6 +893,10 @@ parse_args() {
         ;;
       --github-label)
         GITHUB_LABEL="${2:-}"
+        shift 2
+        ;;
+      --sync-issue)
+        SYNC_ISSUE="${2:-}"
         shift 2
         ;;
       -v|--verbose)
@@ -1320,6 +1326,30 @@ mark_task_complete() {
     yaml) mark_task_complete_yaml "$task" ;;
     github) mark_task_complete_github "$task" ;;
   esac
+}
+
+# Sync PRD file to GitHub issue body
+sync_prd_to_issue() {
+  if [[ -z "$SYNC_ISSUE" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$PRD_FILE" ]]; then
+    log_warn "Cannot sync: $PRD_FILE not found"
+    return 1
+  fi
+
+  if ! command -v gh &>/dev/null; then
+    log_warn "Cannot sync: gh CLI not installed"
+    return 1
+  fi
+
+  log_debug "Syncing $PRD_FILE to issue #$SYNC_ISSUE"
+  if gh issue edit "$SYNC_ISSUE" --body "$(cat "$PRD_FILE")" 2>/dev/null; then
+    log_success "Synced PRD → GitHub issue #$SYNC_ISSUE"
+  else
+    log_warn "Failed to sync PRD to issue #$SYNC_ISSUE"
+  fi
 }
 
 # ============================================
@@ -2043,6 +2073,9 @@ run_single_task() {
     if [[ "$PRD_SOURCE" == "github" ]]; then
       mark_task_complete "$current_task"
     fi
+
+    # Sync PRD to GitHub issue if configured
+    sync_prd_to_issue
 
     # Create PR if requested
     if [[ "$CREATE_PR" == true ]] && [[ -n "$branch_name" ]]; then

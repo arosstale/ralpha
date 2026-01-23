@@ -48,6 +48,7 @@ export function createProgram(): Command {
 		.option("--yaml <file>", "YAML task file")
 		.option("--github <repo>", "GitHub repo for issues (owner/repo)")
 		.option("--github-label <label>", "Filter GitHub issues by label")
+		.option("--sync-issue <number>", "Sync PRD file to GitHub issue body on each iteration")
 		.option("--no-commit", "Don't auto-commit changes")
 		.option("--browser", "Enable browser automation (agent-browser)")
 		.option("--no-browser", "Disable browser automation")
@@ -144,6 +145,7 @@ export function parseArgs(args: string[]): {
 		prdIsFolder,
 		githubRepo: opts.github || "",
 		githubLabel: opts.githubLabel || "",
+		syncIssue: opts.syncIssue ? Number.parseInt(opts.syncIssue, 10) : undefined,
 		autoCommit: opts.commit !== false,
 		browserEnabled: opts.browser === true ? "true" : opts.browser === false ? "false" : "auto",
 		modelOverride,

@@ -5,6 +5,7 @@ import { PROGRESS_FILE, RALPHY_DIR } from "../config/loader.ts";
 import { logTaskProgress } from "../config/writer.ts";
 import type { AIEngine, AIResult } from "../engines/types.ts";
 import { getCurrentBranch, returnToBaseBranch } from "../git/branch.ts";
+import { syncPrdToIssue } from "../git/issue-sync.ts";
 import {
 	abortMerge,
 	analyzePreMerge,
@@ -267,6 +268,7 @@ export async function runParallel(
 		skipMerge,
 		useSandbox = false,
 		engineArgs,
+		syncIssue,
 	} = options;
 
 	const shouldFallbackToSandbox = (error: string | undefined): boolean => {
@@ -425,9 +427,7 @@ export async function runParallel(
 				engineArgs,
 			).then((res) => {
 				if (shouldFallbackToSandbox(res.error)) {
-					logWarn(
-						`Agent ${globalAgentNum}: Worktree unavailable, retrying in sandbox mode.`,
-					);
+					logWarn(`Agent ${globalAgentNum}: Worktree unavailable, retrying in sandbox mode.`);
 					if (res.worktreeDir) {
 						cleanupAgentWorktree(res.worktreeDir, res.branchName, workDir).catch(() => {
 							// Ignore cleanup failures during fallback
@@ -493,9 +493,7 @@ export async function runParallel(
 				if (retryableFailure) {
 					const deferrals = recordDeferredTask(taskSource.type, task, workDir, prdFile);
 					if (deferrals >= maxRetries) {
-						logError(
-							`Task "${task.title}" failed after ${deferrals} deferrals: ${failureReason}`,
-						);
+						logError(`Task "${task.title}" failed after ${deferrals} deferrals: ${failureReason}`);
 						logTaskProgress(task.title, "failed", workDir);
 						result.tasksFailed++;
 						notifyTaskFailed(task.title, failureReason);
@@ -503,9 +501,7 @@ export async function runParallel(
 						clearDeferredTask(taskSource.type, task, workDir, prdFile);
 						retryableFailure = false;
 					} else {
-						logWarn(
-							`Task "${task.title}" deferred (${deferrals}/${maxRetries}): ${failureReason}`,
-						);
+						logWarn(`Task "${task.title}" deferred (${deferrals}/${maxRetries}): ${failureReason}`);
 						result.tasksFailed++;
 					}
 				} else {
@@ -527,6 +523,12 @@ export async function runParallel(
 				await taskSource.markComplete(task.id);
 				logTaskProgress(task.title, "completed", workDir);
 				result.tasksCompleted++;
+
+				// Sync PRD to GitHub issue if configured
+				if (syncIssue && prdFile) {
+					await syncPrdToIssue(prdFile, syncIssue, workDir);
+				}
+
 				notifyTaskComplete(task.title);
 				clearDeferredTask(taskSource.type, task, workDir, prdFile);
 
