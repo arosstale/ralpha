@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import type { Task, TaskSource } from "./types.ts";
 
 /**
@@ -17,7 +17,7 @@ interface CachedContent {
 	incompleteTasks: Task[];
 	remainingCount: number;
 	completedCount: number;
-	lastModified: number;
+	fileMtime: number;
 }
 
 /**
@@ -36,9 +36,21 @@ export class MarkdownTaskSource implements TaskSource {
 	}
 
 	/**
+	 * Get the file's modification time
+	 */
+	private getFileMtime(): number {
+		try {
+			return statSync(this.filePath).mtimeMs;
+		} catch {
+			return 0;
+		}
+	}
+
+	/**
 	 * Load and cache file content with parsed task data
 	 */
 	private loadCache(): CachedContent {
+		const fileMtime = this.getFileMtime();
 		const content = readFileNormalized(this.filePath);
 		const lines = content.split("\n");
 		const incompleteTasks: Task[] = [];
@@ -71,17 +83,22 @@ export class MarkdownTaskSource implements TaskSource {
 			incompleteTasks,
 			remainingCount,
 			completedCount,
-			lastModified: Date.now(),
+			fileMtime,
 		};
 
 		return this.cache;
 	}
 
 	/**
-	 * Get cached content or load fresh
+	 * Get cached content or load fresh if file was modified externally
 	 */
 	private getCache(): CachedContent {
 		if (!this.cache) {
+			return this.loadCache();
+		}
+		// Check if file was modified externally
+		const currentMtime = this.getFileMtime();
+		if (currentMtime !== this.cache.fileMtime) {
 			return this.loadCache();
 		}
 		return this.cache;

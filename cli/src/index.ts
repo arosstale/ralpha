@@ -45,7 +45,7 @@ async function main(): Promise<void> {
 		await runLoop(options);
 	} catch (error) {
 		logError(error instanceof Error ? error.message : String(error));
-		process.exit(1);
+		process.exitCode = 1;
 	} finally {
 		// Ensure all progress writes are flushed before exit
 		await flushAllProgressWrites();

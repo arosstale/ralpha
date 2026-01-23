@@ -25,10 +25,10 @@ interface FileCacheEntry {
  */
 interface FolderCache {
 	files: Map<string, FileCacheEntry>;
+	fileMtimes: Map<string, number>;
 	allTasks: Task[];
 	totalRemaining: number;
 	totalCompleted: number;
-	lastModified: number;
 }
 
 /**
@@ -96,15 +96,28 @@ export class MarkdownFolderTaskSource implements TaskSource {
 	}
 
 	/**
+	 * Get a file's modification time
+	 */
+	private getFileMtime(filePath: string): number {
+		try {
+			return statSync(filePath).mtimeMs;
+		} catch {
+			return 0;
+		}
+	}
+
+	/**
 	 * Load and cache all file contents with parsed task data
 	 */
 	private loadCache(): FolderCache {
 		const files = new Map<string, FileCacheEntry>();
+		const fileMtimes = new Map<string, number>();
 		const allTasks: Task[] = [];
 		let totalRemaining = 0;
 		let totalCompleted = 0;
 
 		for (const filePath of this.markdownFiles) {
+			fileMtimes.set(filePath, this.getFileMtime(filePath));
 			const content = readFileNormalized(filePath);
 			const lines = content.split("\n");
 			const incompleteTasks: Task[] = [];
@@ -147,20 +160,33 @@ export class MarkdownFolderTaskSource implements TaskSource {
 
 		this.cache = {
 			files,
+			fileMtimes,
 			allTasks,
 			totalRemaining,
 			totalCompleted,
-			lastModified: Date.now(),
 		};
 
 		return this.cache;
 	}
 
 	/**
-	 * Get cached content or load fresh
+	 * Check if any cached file has been modified externally
+	 */
+	private isCacheStale(): boolean {
+		if (!this.cache) return true;
+		for (const [filePath, cachedMtime] of this.cache.fileMtimes) {
+			if (this.getFileMtime(filePath) !== cachedMtime) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get cached content or load fresh if any file was modified externally
 	 */
 	private getCache(): FolderCache {
-		if (!this.cache) {
+		if (!this.cache || this.isCacheStale()) {
 			return this.loadCache();
 		}
 		return this.cache;
