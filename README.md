@@ -281,6 +281,7 @@ ralphy --parallel --sandbox
 | `--yaml FILE` | YAML task file |
 | `--github REPO` | use GitHub issues |
 | `--github-label TAG` | filter issues by label |
+| `--sync-issue N` | sync PRD progress to GitHub issue #N |
 | `--model NAME` | override model for any engine |
 | `--sonnet` | shortcut for `--claude --model sonnet` |
 | `--parallel` | run parallel |
@@ -341,6 +342,12 @@ When an engine exits non-zero, ralphy includes the last lines of CLI output in t
 ---
 
 ## Changelog
+
+### v4.6.0
+- **Gemini CLI support**: new `--gemini` engine option for Google Gemini CLI
+- **GitHub issue sync**: `--sync-issue <number>` syncs PRD progress to a GitHub issue after each task
+- **performance improvements**: reduced redundant file reads, exponential backoff for retries, non-blocking logging, operation timing visibility
+- **version fix**: CLI version now reads dynamically from package.json
 
 ### v4.5.3
 - parallel reliability: fallback to sandbox mode on worktree errors
