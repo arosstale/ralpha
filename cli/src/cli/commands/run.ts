@@ -134,6 +134,7 @@ export async function runLoop(options: RuntimeOptions): Promise<void> {
 			modelOverride: options.modelOverride,
 			skipMerge: options.skipMerge,
 			engineArgs: options.engineArgs,
+			syncIssue: options.syncIssue,
 		});
 	} else {
 		result = await runSequential({
@@ -157,6 +158,7 @@ export async function runLoop(options: RuntimeOptions): Promise<void> {
 			modelOverride: options.modelOverride,
 			skipMerge: options.skipMerge,
 			engineArgs: options.engineArgs,
+			syncIssue: options.syncIssue,
 		});
 	}
 

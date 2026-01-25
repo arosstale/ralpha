@@ -101,6 +101,8 @@ export interface RuntimeOptions {
 	githubRepo: string;
 	/** GitHub issue label filter */
 	githubLabel: string;
+	/** GitHub issue number to sync PRD with on each iteration */
+	syncIssue?: number;
 	/** Auto-commit changes */
 	autoCommit: boolean;
 	/** Browser automation mode: 'auto' | 'true' | 'false' */
