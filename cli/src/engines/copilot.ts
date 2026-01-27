@@ -190,8 +190,8 @@ export class CopilotEngine extends BaseAIEngine {
 
 		// Generic error detection - check trimmed output and case-insensitive
 		if (trimmed.toLowerCase().startsWith("error:") || lower.includes("\nerror:")) {
-			// Extract the error message
-			const match = output.match(/error:\s*(.+?)(?:\n|$)/i);
+			// Extract the error message - capture until double-newline or end to support multi-line errors
+			const match = output.match(/error:\s*(.+?)(?:\n\n|$)/is);
 			if (match) {
 				return match[1].trim();
 			}

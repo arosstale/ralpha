@@ -514,6 +514,30 @@ o1-preview 1.5m in, 0.5m out, 0.1m cached`,
 			spy.mockRestore();
 		});
 
+		it("should capture multi-line error messages", async () => {
+			const spy = spyOn(baseModule, "execCommand").mockResolvedValue({
+				stdout: `Error: Failed to process request
+Details: The model encountered an issue
+Stack trace: at line 42
+
+Some other output after double newline`,
+				stderr: "",
+				exitCode: 1,
+			});
+
+			const result = await engine.execute("test", testWorkDir);
+
+			expect(result.success).toBe(false);
+			// Should capture all lines until double-newline
+			expect(result.error).toContain("Failed to process request");
+			expect(result.error).toContain("Details: The model encountered an issue");
+			expect(result.error).toContain("Stack trace: at line 42");
+			// Should not include content after double-newline
+			expect(result.error).not.toContain("Some other output");
+
+			spy.mockRestore();
+		});
+
 		it("should handle non-zero exit codes", async () => {
 			const spy = spyOn(baseModule, "execCommand").mockResolvedValue({
 				stdout: "Some output before failure",
