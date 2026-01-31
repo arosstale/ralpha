@@ -30,11 +30,11 @@ export async function rmRF(path: string): Promise<void> {
 	for (let i = 0; i < retries; i++) {
 		try {
 			// Using force: true and recursive: true is standard
-			// maxRetries in rmSync options is available in newer Node, but manual loop is safer
-			rmSync(path, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+			rmSync(path, { recursive: true, force: true });
 			return;
 		} catch (err: any) {
 			const isLockError = err.code === "EBUSY" || err.code === "EPERM" || err.code === "ENOTEMPTY";
+			
 			if (isLockError && i < retries - 1) {
 				// Wait with exponential backoff: 500, 1000, 2000, 4000...
 				const delay = 500 * Math.pow(2, i);
@@ -42,11 +42,12 @@ export async function rmRF(path: string): Promise<void> {
 				continue;
 			}
 			
-			// On final failure, log warning and swallow error to prevent crash
-			if (i === retries - 1) {
+			// On final failure for lock errors, log warning and swallow.
+			// For non-lock errors (any time), throw immediately.
+			if (isLockError && i === retries - 1) {
 				logWarn(`Failed to clean up ${path} after ${retries} attempts: ${err.message}. This may be due to a file lock. Proceeding anyway.`);
 			} else {
-				throw err; // Re-throw non-lock errors immediately
+				throw err; 
 			}
 		}
 	}
@@ -232,9 +233,7 @@ export async function createSandbox(options: SandboxOptions): Promise<SandboxRes
 		};
 	} catch (err) {
 		// Cleanup partial sandbox on failure
-		if (existsSync(sandboxDir)) {
-			rmSync(sandboxDir, { recursive: true, force: true });
-		}
+		await rmRF(sandboxDir);
 		throw err;
 	}
 }
@@ -358,9 +357,7 @@ export async function syncSandboxToOriginal(
  * Clean up a sandbox directory.
  */
 export async function cleanupSandbox(sandboxDir: string): Promise<void> {
-	if (existsSync(sandboxDir)) {
-		rmSync(sandboxDir, { recursive: true, force: true });
-	}
+	await rmRF(sandboxDir);
 }
 
 /**
